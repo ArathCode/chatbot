@@ -15,21 +15,31 @@ class ChatController
         }
         $mensajeLower = strtolower($mensaje);
 
-        if (
+        // Detectar si parece búsqueda (palabras clave)
+        $esBusqueda = (
+            strpos($mensajeLower, "casa") !== false ||
+            strpos($mensajeLower, "terreno") !== false ||
+            strpos($mensajeLower, "departamento") !== false ||
+            strpos($mensajeLower, "en ") !== false
+        );
+
+        // Detectar saludo
+        $esSaludo = (
             strpos($mensajeLower, "hola") !== false ||
             strpos($mensajeLower, "informacion") !== false ||
             strpos($mensajeLower, "info") !== false
-        ) {
+        );
+
+        // 👉 Si es saludo PERO no es búsqueda → mostrar bienvenida
+        if ($esSaludo && !$esBusqueda) {
 
             $respuesta = "👋 *¡Bienvenido a Inmobiliaria Serrano!*\n\n";
-            $respuesta .= "🏡 Te ayudamos a encontrar la propiedad ideal de forma rápida y segura.\n\n";
-            $respuesta .= "🔎 *¿Cómo buscar?*\n";
-            $respuesta .= "Escribe algo como:\n";
-            $respuesta .= "• 'Casa en Puebla'\n";
-            $respuesta .= "• 'Terreno en Tlaxcala'\n";
+            $respuesta .= "🏡 Te ayudamos a encontrar la propiedad ideal.\n\n";
+            $respuesta .= "🔎 *Puedes buscar así:*\n";
+            $respuesta .= "• 'Casa en Tlaxcala'\n";
+            $respuesta .= "• 'Terreno en Puebla'\n";
             $respuesta .= "• 'Departamento en Querétaro'\n\n";
-            $respuesta .= "💬 También puedes escribir:\n";
-            $respuesta .= "👉 'Quiero hablar con un asesor'\n\n";
+            $respuesta .= "💬 O escribe:\n👉 'Hablar con asesor'\n\n";
             $respuesta .= "✨ *Inmobiliaria Serrano - Siempre la mejor opción*";
 
             responder($respuesta);
