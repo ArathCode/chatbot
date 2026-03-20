@@ -1,16 +1,29 @@
 <?php
 require_once __DIR__ . '/../services/OpenAIService.php';
 require_once __DIR__ . '/../models/Propiedad.php';
+require_once __DIR__ . '/../models/UsuarioSession.php';
 require_once __DIR__ . '/../services/WhatsAppService.php';
 
 class ChatController
 {
 
-    public static function manejarMensaje($mensaje)
+    public static function manejarMensaje($mensaje, $telefonoUsuario = 'desconocido')
     {
 
         if (empty($mensaje)) {
             responder("❌ Error: no recibí ningún mensaje");
+            return;
+        }
+
+        // ⏰ Verificar si el usuario está en cooldown (fue contactado por asesor recientemente)
+        if (UsuarioSession::estaEnCooldown($telefonoUsuario)) {
+            $minutosFaltantes = UsuarioSession::minutosFaltanteCooldown($telefonoUsuario);
+            $s = $minutosFaltantes == 1 ? '' : 's';
+            responder(
+                "⏳ Un asesor de *Inmobiliaria Serrano* se pondrá en contacto contigo en unos momentos.\n\n" .
+                "⏰ Vuelve a escribir en aproximadamente *$minutosFaltantes minuto$s*.\n\n" .
+                "Gracias por tu paciencia ✅"
+            );
             return;
         }
         $mensajeLower = strtolower($mensaje);
@@ -55,6 +68,9 @@ class ChatController
 
         // Verificar si el usuario quiere contactar con un ejecutivo
         if (isset($datos['tipo_accion']) && $datos['tipo_accion'] === 'contacto_ejecutivo') {
+            // 📞 Registrar que se contactó con asesor para activar cooldown
+            UsuarioSession::registrarContactoAsesor($telefonoUsuario);
+            
             $respuesta = "👔 *¡Excelente!*\n\n";
             $respuesta .= "Te conectaremos con uno de nuestros ejecutivos de ventas que te brindará la mejor atención personalizada.\n\n";
             $respuesta .= "🏢 *Promotoria Serrano* - Siempre la mejor opción\n\n";
@@ -63,37 +79,53 @@ class ChatController
             return;
         }
 
-        // Búsqueda de propiedades
-        $tipo = trim($datos['tipo_propiedad'] ?? '') ?: null;
-        $ubicacion = trim($datos['ubicacion'] ?? '') ?: null;
+        // Búsqueda de propiedades (flexible - puede ser solo tipo, solo ubicación, o ambas)
+        $tipo = trim($datos['tipo_propiedad'] ?? '');
+        $tipo = ($tipo && $tipo !== 'null' && $tipo !== '') ? $tipo : null;
+        
+        $ubicacion = trim($datos['ubicacion'] ?? '');
+        $ubicacion = ($ubicacion && $ubicacion !== 'null' && $ubicacion !== '') ? $ubicacion : null;
 
-        // Validar que al menos tipo y ubicación estén presentes
-        if (!$tipo || !$ubicacion) {
-            responder("⚠️ No pude entender bien tu búsqueda. Intenta así:\n'Busco una casa en [lugar]'");
+        // Validar que al menos haya algo para buscar
+        if (!$tipo && !$ubicacion) {
+            responder("⚠️ No pude entender bien tu búsqueda.\n\n🔎 Intenta así:\n• 'Casas en Tlaxcala'\n• 'Terrenos'\n• 'Departamentos en Puebla'\n• 'Propiedades en Querétaro'");
             return;
         }
 
         // Buscar propiedades (sin filtro de precio)
         $resultados = Propiedad::buscar($tipo, $ubicacion);
 
+        $resultados = Propiedad::buscar($tipo, $ubicacion);
+
         if (count($resultados) > 0) {
             $respuesta = "🏡 *Inmobiliaria Serrano*\n";
             $respuesta .= "✨ *Tenemos estas opciones ideales para ti* (" . count($resultados) . ")\n\n";
-            $respuesta .= "📢 Propiedades seleccionadas según tu búsqueda:\n\n";
+            
+            // Mensaje personalizado según lo que se buscó
+            if ($tipo && $ubicacion) {
+                $respuesta .= "📢 $tipo" . "s en " . ucfirst($ubicacion) . ":\n\n";
+            } elseif ($tipo) {
+                $respuesta .= "📢 Todos nuestros " . $tipo . "s:\n\n";
+            } elseif ($ubicacion) {
+                $respuesta .= "📢 Propiedades en " . ucfirst($ubicacion) . ":\n\n";
+            } else {
+                $respuesta .= "📢 Nuestras mejores opciones:\n\n";
+            }
+            
             $fotos = [];
 
             foreach ($resultados as $prop) {
                 $respuesta .= "📍 *{$prop['tipo']}* en {$prop['ubicacion']}\n";
                 $respuesta .= "💵 \${$prop['precio']}\n";
                 $respuesta .= "📝 {$prop['descripcion']}\n";
-                $respuesta .= "👉 *¡Agenda tu visita hoy mismo!*\n";
+                $respuesta .= "👉 *¡Agenda tu visita hoy mismo!*\n\n";
 
                 // Recolectar fotos si existen
                 if (!empty($prop['foto'])) {
                     $fotos[] = $prop['foto'];
                 }
             }
-            $respuesta .= "\n📲 ¿Te interesa alguna propiedad?\n";
+            $respuesta .= "📲 ¿Te interesa alguna propiedad?\n";
             $respuesta .= "Responde con el nombre o escribe:\n";
             $respuesta .= "👉 'Hablar con asesor'\n\n";
             $respuesta .= "🏢 *Inmobiliaria Serrano*\n";
@@ -101,10 +133,17 @@ class ChatController
 
             responder($respuesta, $fotos);
         } else {
-            $respuesta = "😕 No encontré propiedades que coincidan con:\n";
-            $respuesta .= "• Tipo: $tipo\n";
-            $respuesta .= "• Ubicación: $ubicacion\n\n";
-            $respuesta .= "¿Quieres buscar en otro lugar?";
+            $respuesta = "😕 No encontré propiedades que coincidan con tu búsqueda.\n\n";
+            if ($tipo) {
+                $respuesta .= "• Buscaste: *" . ucfirst($tipo) . "s*";
+            }
+            if ($ubicacion) {
+                $respuesta .= ($tipo ? "" : "• Buscaste: ") . ($tipo ? " en " : "") . "*" . ucfirst($ubicacion) . "*\n";
+            }
+            $respuesta .= "\n🔍 Intenta con:\n";
+            $respuesta .= "• Otra ubicación\n";
+            $respuesta .= "• Otro tipo de propiedad\n";
+            $respuesta .= "• O habla con un asesor";
 
             responder($respuesta);
         }

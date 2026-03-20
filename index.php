@@ -11,8 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Obtener el mensaje de WhatsApp (vía Twilio)
+// Obtener el mensaje y número de teléfono de WhatsApp (vía Twilio)
 $mensaje = $_POST['Body'] ?? '';
+$telefonoUsuario = $_POST['From'] ?? 'desconocido'; // Número de Twilio format: whatsapp:+XXXXXXXXXXX
 
 // Trim y validar
 $mensaje = trim($mensaje);
@@ -22,5 +23,5 @@ if (empty($mensaje)) {
     exit;
 }
 
-// Procesar el mensaje
-ChatController::manejarMensaje($mensaje);
+// Procesar el mensaje con el número de teléfono
+ChatController::manejarMensaje($mensaje, $telefonoUsuario);

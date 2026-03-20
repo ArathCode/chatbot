@@ -1,13 +1,18 @@
 <?php
 function interpretarMensaje($mensaje) {
 
-    $prompt = "Analiza el mensaje y retorna JSON estricto (sin markdown, sin triple backticks).
+    $prompt = "Eres un asistente de búsqueda de propiedades inmobiliarias. Analiza el mensaje y retorna JSON estricto (sin markdown, sin triple backticks).
 
-Si el usuario busca PROPIEDADES:
+Si el usuario busca PROPIEDADES (puede ser parcial):
+- Si dice 'propiedades', 'inmuebles', 'terrenos', 'casas', 'departamentos' → extrae lo que mencionó
+- Si menciona una ubicación específica → extrae esa ubicación
+- Si NO menciona ubicación específica → devuelve null en ubicacion
+- Si NO menciona tipo específico → devuelve null en tipo_propiedad
+
 {
   \"tipo_accion\": \"buscar_propiedad\",
-  \"tipo_propiedad\": \"tipo (casa/departamento/terreno/etc)\",
-  \"ubicacion\": \"ubicación\"
+  \"tipo_propiedad\": \"tipo (casa/departamento/terreno/propiedad) o null\",
+  \"ubicacion\": \"ubicación específica o null\"
 }
 
 Si el usuario quiere HABLAR CON EJECUTIVO (palabras clave: ejecutivo, asesor, contacto, agente, vendedor):
@@ -17,7 +22,7 @@ Si el usuario quiere HABLAR CON EJECUTIVO (palabras clave: ejecutivo, asesor, co
 
 Mensaje: $mensaje
 
-Responde SOLO el JSON.";
+Responde SOLO el JSON, nada más.";
 
     $data = [
         "model" => "gpt-4o-mini",
