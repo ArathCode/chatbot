@@ -1,0 +1,15 @@
+# Variables sensibles
+.env
+
+# Dependencias
+/vendor/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config local
+config/config.php
