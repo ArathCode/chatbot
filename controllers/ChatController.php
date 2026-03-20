@@ -58,9 +58,6 @@ class ChatController {
                     $fotos[] = $prop['foto'];
                 }
             }
-            $respuesta .= "Te conectaremos con uno de nuestros ejecutivos de ventas que te brindará la mejor atención personalizada.\n\n";
-            $respuesta .= "🏢 *Promotoria Serrano* - Siempre la mejor opción\n\n";
-            $respuesta .= "Pronto uno de nuestros asesores se pondrá en contacto contigo. ¡Gracias por tu confianza!";
             
             responder($respuesta, $fotos);
 
